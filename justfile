@@ -16,6 +16,9 @@ help:
 c2d file:
     python c2d.py {{file}}
 
+cc file:
+    python cc.py {{file}}
+
 qca file:
     {{qcadesigner}} {{file}}
     python c2d.py {{file}}
