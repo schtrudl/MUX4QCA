@@ -1,0 +1,15 @@
+About to start the coherence vector energy simulation with 360000 samples
+3000 samples will be recorded for graphing.
+Simulation found 3 inputs 1 outputs
+It took 5 iterations to converge the initial steady state polarization
+
+********* Energy Dissipation in eV ********** 
+
+E_bath_total:	8,9799e-005	1,1080e-003	3,2702e-004	4,5276e-003	1,7463e-004	2,4417e-003	1,1044e-003	
+E_clk_total:	9,5324e-004	5,0904e-004	1,2147e-003	-1,1031e-003	7,6667e-004	-6,3476e-004	2,4778e-004	
+E_Error_total:	-1,8205e-004	 -1,5635e-004	 -1,9709e-004	 -2,6796e-004	 -1,9763e-004	 1,4060e-005	 -2,8767e-004	 
+
+Total energy dissipation (Sum_Ebath): 9,77e-003 eV (Error: +/- -1,27e-003 eV)
+Average energy dissipation per cycle (Avg_Ebath): 1,40e-003 eV (Error: +/- -1,82e-004 eV)
+********************************************************
+Total simulation time: 2 s
