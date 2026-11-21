@@ -9,9 +9,11 @@ import statistics
 TRACE_PATTERN = re.compile(r"\[TRACE\](.*?)\[#TRACE\]", re.DOTALL)
 LABEL_PATTERN = re.compile(r"^\s*data_labels\s*=\s*(.*?)\s*$", re.MULTILINE)
 TRACE_DATA_PATTERN = re.compile(r"\[TRACE_DATA\](.*?)\[#TRACE_DATA\]", re.DOTALL)
-LOGIC_THRESHOLD = 0.5
-CLOCK_LOW_TOLERANCE = 0.1
-HOLD_SAMPLE_FRACTION = 0.8
+LOGIC_THRESHOLD = 0.8
+CLOCK_LOW_LEVEL = 3.8e-23
+CLOCK_HIGH_LEVEL = 9.8e-22
+# last clock level is usually corrupted because it is cutoff
+HOLD_SAMPLE_FRACTION = 0.5
 SAMPLE_WINDOW_RADIUS = 1
 OUTPUT_PREFIXES = ("z", "izhod")
 INPUT_PREFIX_ORDER = {"a": 0, "i": 1, "vhod": 2}
@@ -19,19 +21,16 @@ CLOCKS_PER_CYCLE = 4
 
 
 def _logic_value(value: float):
-    if value >= LOGIC_THRESHOLD:
-        return 1
-    if value <= -LOGIC_THRESHOLD:
-        return 0
-    return None
+    return int(value >= LOGIC_THRESHOLD)
 
 
 def _sample_logic(trace, sample_index, start=0, end=None):
     if end is None:
         end = len(trace)
     window = trace[
-        max(start, sample_index - SAMPLE_WINDOW_RADIUS) :
-        min(end, sample_index + SAMPLE_WINDOW_RADIUS + 1)
+        max(start, sample_index - SAMPLE_WINDOW_RADIUS) : min(
+            end, sample_index + SAMPLE_WINDOW_RADIUS + 1
+        )
     ]
     logic_values = [_logic_value(value) for value in window]
     if not logic_values or None in logic_values or len(set(logic_values)) != 1:
@@ -73,9 +72,7 @@ def _parse_traces(s: str):
     if len(sample_counts) != 1:
         raise ValueError("Traces have different sample counts")
 
-    declared_samples = re.search(
-        r"^\s*number_samples\s*=\s*(\d+)\s*$", s, re.MULTILINE
-    )
+    declared_samples = re.search(r"^\s*number_samples\s*=\s*(\d+)\s*$", s, re.MULTILINE)
     if declared_samples and int(declared_samples.group(1)) != sample_counts.pop():
         raise ValueError("number_samples does not match the trace data")
 
@@ -83,16 +80,13 @@ def _parse_traces(s: str):
 
 
 def _clock_low_runs(trace):
-    low_level = min(trace)
-    high_level = max(trace)
-    if high_level <= low_level:
-        raise ValueError("Hold clock trace has no HIGH/LOW range")
+    if not any(value >= CLOCK_HIGH_LEVEL for value in trace):
+        raise ValueError("Hold clock trace has no HIGH samples")
 
-    low_limit = low_level + (high_level - low_level) * CLOCK_LOW_TOLERANCE
     runs = []
     run_start = None
-    for sample_index, value in enumerate(trace + [high_level]):
-        if value <= low_limit:
+    for sample_index, value in enumerate(trace + [CLOCK_HIGH_LEVEL]):
+        if value <= CLOCK_LOW_LEVEL:
             if run_start is None:
                 run_start = sample_index
         elif run_start is not None:
@@ -124,9 +118,7 @@ def _is_clock_label(label):
     return label.upper().startswith("CLOCK")
 
 
-def parse_simulation_results_into_table(
-    s: str, delay_zones: int = 3
-) -> str:
+def parse_simulation_results_into_table(s: str, delay_zones: int = 3) -> str:
     if not isinstance(delay_zones, int) or delay_zones < 1:
         raise ValueError("Delay must be a positive number of clock zones")
 
@@ -165,8 +157,7 @@ def parse_simulation_results_into_table(
         raise ValueError(f"Not enough HOLD periods in {clock_label!r}")
 
     cycle_samples = statistics.mean(
-        end_start[0] - start[0]
-        for start, end_start in zip(hold_runs, hold_runs[1:])
+        end_start[0] - start[0] for start, end_start in zip(hold_runs, hold_runs[1:])
     )
 
     truth_table = {}
@@ -179,8 +170,7 @@ def parse_simulation_results_into_table(
             output_sample - (delay_zones / CLOCKS_PER_CYCLE) * cycle_samples
         )
         vector = tuple(
-            _sample_logic(traces[label], input_sample)
-            for label in input_labels
+            _sample_logic(traces[label], input_sample) for label in input_labels
         )
         if None in vector:
             continue
@@ -194,8 +184,7 @@ def parse_simulation_results_into_table(
 
         if vector in truth_table and truth_table[vector] != outputs:
             raise ValueError(
-                f"Conflicting output values for input "
-                f"{dict(zip(input_labels, vector))}"
+                f"Conflicting output values for input {dict(zip(input_labels, vector))}"
             )
         truth_table[vector] = outputs
 

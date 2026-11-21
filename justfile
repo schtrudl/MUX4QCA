@@ -25,3 +25,6 @@ qca file:
 
 render file:
     python eps2pdf.py "{{file}}" --gs "{{gs}}"
+
+extract file delay:
+    python extract_truth_table.py {{file}} --delay-zones {{delay}}
