@@ -28,3 +28,6 @@ render file:
 
 extract file delay:
     python extract_truth_table.py {{file}} --delay-zones {{delay}}
+
+simplify file:
+    python simplify_truth_table.py {{file}}
